@@ -72,7 +72,6 @@ stages:
           commandOptions: '-auto-approve dev.tfplan'
           environmentServiceNameAzureRM: 'MacroLife(xxxxxx-0123456789)'
 
-stages:
   - stage: DESTROY
     condition: and(eq('${{ parameters.action }}', 'destroy'), eq(variables.isMain, true))
     displayName: Terraform Destroy
