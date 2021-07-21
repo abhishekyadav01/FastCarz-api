@@ -9,4 +9,69 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
+parameters:
+- name: action
+  displayName: Terraform Action
+  type: string
+  default: apply
+  values:
+  - apply
+  - destroy
+
+variables:
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  TERRAFORM_VERSION: 0.14.6
+
+stages:
+  - stage: APPLY
+    condition: and(eq('${{ parameters.action }}', 'apply'), eq(variables.isMain, true)) 
+    displayName: Terraform Apply
+    jobs:
+    - job: Azure_Infra
+      displayName: Azure Deployment Using Terraform
+      steps:
+
+      - task: TerraformInstaller@0
+        inputs:
+          terraformVersion: '$(TERRAFORM_VERSION)'      
+
+      - task: TerraformTaskV2@2
+        displayName: Terraform Init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure/'
+          backendServiceArm: 'MacroLife(xxxxxx-0123456789)'
+          backendAzureRmResourceGroupName: 'rg-terraform'
+          backendAzureRmStorageAccountName: 'xxxxxxx'
+          backendAzureRmContainerName: 'dev'
+          backendAzureRmKey: 'terraform.tfstate'
+
+      - task: TerraformTaskV2@2
+        displayName: Terraform Validate
+        inputs:
+          provider: 'azurerm'
+          command: 'validate'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure'
+
+      - task: TerraformTaskV2@2
+        displayName: Terraform Plan
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure'
+          commandOptions: '-out dev.tfplan'
+          environmentServiceNameAzureRM: 'MacroLife(xxxxxx-0123456789)'
+
+      - task: TerraformTaskV2@2
+        displayName: Terraform Apply
+        inputs:
+          provider: 'azurerm'
+          command: 'apply'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure'
+          commandOptions: '-auto-approve dev.tfplan'
+          environmentServiceNameAzureRM: 'MacroLife(xxxxxx-0123456789)'
+
+
+
 
