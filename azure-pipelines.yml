@@ -24,16 +24,16 @@ variables:
 
 stages:
   - stage: APPLY
-    condition: and(eq('${{ parameters.action }}', 'apply'), eq(variables.isMain, true)) 
+    condition: and(eq('${{ parameters.action }}', 'apply'), eq(variables.isMain, true))
     displayName: Terraform Apply
     jobs:
     - job: Azure_Infra
-      displayName: Azure Deployment Using Terraform
+      displayName: Creating or Updating Azure Infra Using Terraform
       steps:
 
       - task: TerraformInstaller@0
         inputs:
-          terraformVersion: '$(TERRAFORM_VERSION)'      
+          terraformVersion: '$(TERRAFORM_VERSION)'
 
       - task: TerraformTaskV2@2
         displayName: Terraform Init
@@ -43,7 +43,7 @@ stages:
           workingDirectory: '$(System.DefaultWorkingDirectory)/azure/'
           backendServiceArm: 'MacroLife(xxxxxx-0123456789)'
           backendAzureRmResourceGroupName: 'rg-terraform'
-          backendAzureRmStorageAccountName: 'xxxxxxx'
+          backendAzureRmStorageAccountName: 'tfstate74985475'
           backendAzureRmContainerName: 'dev'
           backendAzureRmKey: 'terraform.tfstate'
 
@@ -72,6 +72,52 @@ stages:
           commandOptions: '-auto-approve dev.tfplan'
           environmentServiceNameAzureRM: 'MacroLife(xxxxxx-0123456789)'
 
+stages:
+  - stage: DESTROY
+    condition: and(eq('${{ parameters.action }}', 'destroy'), eq(variables.isMain, true))
+    displayName: Terraform Destroy
+    jobs:
+    - job: Azure_Infra
+      displayName: Destroying Azure Infra Using Terraform
+      steps:
 
+      - task: TerraformInstaller@0
+        inputs:
+          terraformVersion: '$(TERRAFORM_VERSION)'
 
+      - task: TerraformTaskV2@2
+        displayName: Terraform Init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure/'
+          backendServiceArm: 'MacroLife(xxxxxx-0123456789)'
+          backendAzureRmResourceGroupName: 'rg-terraform'
+          backendAzureRmStorageAccountName: 'tfstate74985475'
+          backendAzureRmContainerName: 'dev'
+          backendAzureRmKey: 'terraform.tfstate'
 
+      - task: TerraformTaskV2@2
+        displayName: Terraform Validate
+        inputs:
+          provider: 'azurerm'
+          command: 'validate'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure'
+
+      - task: TerraformTaskV2@2
+        displayName: Terraform Plan Destroy
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure'
+          commandOptions: '-destroy -out dev.destroy.tfplan'
+          environmentServiceNameAzureRM: 'MacroLife(xxxxxx-0123456789)'
+
+      - task: TerraformTaskV2@2
+        displayName: Terraform Destroy
+        inputs:
+          provider: 'azurerm'
+          command: 'destroy'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/azure'
+          commandOptions: '-auto-approve dev.destroy.tfplan'
+          environmentServiceNameAzureRM: 'MacroLife(xxxxxx-0123456789)'
